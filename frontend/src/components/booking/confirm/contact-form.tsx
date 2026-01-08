@@ -5,7 +5,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { api } from '@/lib/api';
+import { sendVerificationCode as sendCodeAction } from '@/app/actions/booking';
 
 interface ContactFormProps {
     onSubmit: (data: { phone: string; code: string }) => Promise<void>;
@@ -77,22 +77,24 @@ export function ContactForm({ onSubmit, isSubmitting, error, defaultPhone }: Con
 
         try {
             setIsSendingCode(true);
-            const response = await api.sendVerificationCode(phone);
+            const response = await sendCodeAction(phone);
             console.log('验证码响应:', response);
             
             // 如果收到验证码（开发环境），则自动填充
-            if (response.code) {
+            if (response.success && response.code) {
                 console.log('收到验证码:', response.code);
                 fillVerificationCode(response.code);
                 toast({
                     title: "开发模式",
                     description: `验证码：${response.code}`,
                 });
-            } else {
+            } else if (response.success) {
                 toast({
                     title: "成功",
-                    description: response.message || "验证码已发送",
+                    description: "验证码已发送",
                 });
+            } else {
+                throw new Error(response.error);
             }
             setCountdown(60);
         } catch (error: any) {

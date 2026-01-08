@@ -4,13 +4,12 @@
 import { cn } from "@/lib/utils"
 
 interface BookingStepsProps {
-    current: 'services' | 'resource' | 'time' | 'confirm'
+    current: 'services' | 'time' | 'confirm'
 }
 
 export function BookingSteps({ current }: BookingStepsProps) {
     const steps = [
         { id: 'services', label: 'Services' },
-        { id: 'resource', label: 'Resource' },
         { id: 'time', label: 'Time' },
         { id: 'confirm', label: 'Confirm' }
     ]

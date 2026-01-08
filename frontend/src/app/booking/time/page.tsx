@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBooking } from '@/contexts/BookingContext';
-import { api } from '@/lib/api';
+import { getTimeSlots } from '@/app/actions/booking';
 import { TimeSlot } from '@/types';
 import { BookingSteps } from '@/components/booking/steps/booking-steps';
 import { PageHeader } from '@/components/page-header';
@@ -38,7 +38,7 @@ export default function TimePage() {
     });
 
     useEffect(() => {
-        // 如果没有选择服务和专家，重定向到服务选择页面
+        // 如果没有选择服务，重定向到服务选择页面
         if (!state.selectedService) {
             router.replace('/booking/services');
             return;
@@ -48,19 +48,11 @@ export default function TimePage() {
             try {
                 setError(null);
                 setLoading(true);
-                const shopId = state.selectedService.shopId;
-                const specialistId = state.selectedSpecialist?.id;
+                const shopId = state.selectedService!.shopId;
 
-                // 先尝试生成时间段
-                await api.generateTimeSlots({
-                    shopId,
-                    specialistId,
-                    date: selectedDate
-                });
-
-                // 然后获取可用时间段
-                const data = await api.getTimeSlots(shopId, selectedDate, specialistId);
-                setTimeSlots(data);
+                // 获取可用时间段 (不再需要 specialistId)
+                const data = await getTimeSlots(shopId, selectedDate);
+                setTimeSlots(data as any);
             } catch (error: any) {
                 console.error('Failed to load time slots:', error);
                 setError(error.message || 'Failed to load time slots. Please try again.');
@@ -70,7 +62,7 @@ export default function TimePage() {
         }
 
         loadTimeSlots();
-    }, [state.selectedService, state.selectedSpecialist, selectedDate, router]);
+    }, [state.selectedService, selectedDate, router]);
 
     const handleSelectDate = (date: string) => {
         setSelectedDate(date);

@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from 'next/navigation';
 import { useBooking } from '@/contexts/BookingContext';
-import { serviceApi } from '@/services/api';
+import { getServices } from '@/app/actions/booking';
 import { BookingSteps } from '@/components/booking/steps/booking-steps';
 import { PageHeader } from '@/components/booking/steps/page-header';
 import { ServiceOptionModal } from '@/components/booking/services/service-option-modal';
@@ -41,13 +41,13 @@ export default function ServicesPage() {
                 // 使用固定的测试 shopId
                 const shopId = 'aec0c125-1c74-487f-8b6d-4ce0125384a2';
                 console.log('Loading services for shop:', shopId);
-                const data = await serviceApi.getServices(shopId);
-                console.log('Loaded services:', data);
-                if (Array.isArray(data)) {
-                    setServices(data);
+                const response = await getServices(shopId);
+                console.log('Loaded services:', response);
+                if (response.success && Array.isArray(response.data)) {
+                    setServices(response.data as any);
                 } else {
-                    console.error('Invalid services data:', data);
-                    setError('Invalid services data received');
+                    console.error('Invalid services data:', response);
+                    setError(response.error || 'Invalid services data received');
                 }
             } catch (error) {
                 console.error('Failed to load services:', error);
@@ -84,7 +84,7 @@ export default function ServicesPage() {
                 }
             });
             setIsModalOpen(false);
-            router.push('/booking/resource');
+            router.push('/booking/time');
         }
     };
 
@@ -103,7 +103,7 @@ export default function ServicesPage() {
         <div className="max-w-6xl mx-auto px-4 py-8">
             {/* Progress Steps */}
             <div className="mb-8">
-                <BookingSteps />
+                <BookingSteps current="services" />
             </div>
 
             <PageHeader

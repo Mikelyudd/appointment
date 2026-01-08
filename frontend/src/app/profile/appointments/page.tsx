@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { getUserAppointments, updateAppointmentStatus } from '@/app/actions/booking';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -20,21 +20,16 @@ interface Appointment {
     id: string;
     shopId: string;
     serviceId: string;
-    specialistId: string;
     timeSlotId: string;
     customerName: string;
     customerPhone: string;
     customerEmail?: string;
     notes?: string;
-    status: 'pending' | 'confirmed' | 'cancelled';
+    status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
     date: string;
     startTime: string;
     endTime: string;
     service?: {
-        id: string;
-        name: string;
-    };
-    specialist?: {
         id: string;
         name: string;
     };
@@ -75,8 +70,12 @@ export default function AppointmentsPage() {
                 return;
             }
 
-            const data = await api.getAppointments(phone);
-            setAppointments(data);
+            const response = await getUserAppointments(phone);
+            if (response.success) {
+                setAppointments(response.data as any);
+            } else {
+                setError(response.error || '加载预约记录失败');
+            }
         } catch (error: any) {
             console.error('Failed to load appointments:', error);
             setError('加载预约记录失败');
@@ -88,9 +87,13 @@ export default function AppointmentsPage() {
     const handleCancel = async (appointmentId: string) => {
         try {
             setIsCancelling(true);
-            await api.updateAppointmentStatus(appointmentId, 'cancelled');
-            await loadAppointments();
-            setSelectedAppointment(null);
+            const response = await updateAppointmentStatus(appointmentId, 'CANCELLED');
+            if (response.success) {
+                await loadAppointments();
+                setSelectedAppointment(null);
+            } else {
+                setError(response.error || '取消预约失败');
+            }
         } catch (error: any) {
             console.error('Failed to cancel appointment:', error);
             setError('取消预约失败');
@@ -99,7 +102,7 @@ export default function AppointmentsPage() {
         }
     };
 
-    const handleReschedule = (appointment) => {
+    const handleReschedule = (appointment: Appointment) => {
         setIsRescheduling(true);
         // 保存当前预约信息到 localStorage
         if (typeof window !== 'undefined') {
@@ -151,12 +154,9 @@ export default function AppointmentsPage() {
                                 <p className="text-sm text-gray-500 mt-1">
                                     {format(new Date(appointment.date), 'yyyy-MM-dd')} {appointment.startTime}
                                 </p>
-                                <p className="text-sm text-gray-500">
-                                    专家：{appointment.specialist?.name}
-                                </p>
                             </div>
                             <div className="flex gap-2">
-                                {appointment.status === 'confirmed' && (
+                                {appointment.status === 'CONFIRMED' && (
                                     <>
                                         <Button
                                             variant="outline"

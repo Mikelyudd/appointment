@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBooking } from '@/contexts/BookingContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { api } from '@/lib/api';
+import { verifyAndCreateAppointment, sendVerificationCode } from '@/app/actions/booking';
 import { BookingSteps } from '@/components/booking/steps/booking-steps';
 import { ContactForm } from '@/components/booking/confirm/contact-form';
 import moment from 'moment';
@@ -77,7 +77,6 @@ export default function ConfirmPage() {
     // 在组件挂载时检查预约信息
     useEffect(() => {
         if (!bookingState.selectedService ||
-            !bookingState.selectedSpecialist ||
             !bookingState.selectedTimeSlot) {
             router.replace('/booking/services');
         }
@@ -85,7 +84,6 @@ export default function ConfirmPage() {
 
     // 如果没有必要的信息，显示加载状态
     if (!bookingState.selectedService ||
-        !bookingState.selectedSpecialist ||
         !bookingState.selectedTimeSlot) {
         return (
             <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -105,16 +103,14 @@ export default function ConfirmPage() {
 
     // 确保所有必要的信息都存在
     const service = bookingState.selectedService!;
-    const specialist = bookingState.selectedSpecialist!;
     const timeSlot = bookingState.selectedTimeSlot!;
 
     const bookingDetails = {
         serviceName: service.name,
         duration: `${service.duration} min`,
-        specialist: specialist.name,
         date: moment(timeSlot.date).format('dddd, MMMM D, YYYY'),
         time: moment(timeSlot.startTime, 'HH:mm').format('h:mm A'),
-        price: service.price ? `$${service.price.toFixed(2)}` : 'Free'
+        price: service.price ? `$${service.price}` : 'Free'
     };
 
     // 已登录用户的提交处理
@@ -123,14 +119,14 @@ export default function ConfirmPage() {
             setIsSubmitting(true);
             setError(null);
 
-            await api.createAppointment({
+            await verifyAndCreateAppointment({
+                phone: authState.user?.phone || '',
+                code: 'LOGGED_IN', // 或者是你的登录验证逻辑
                 shopId: service.shopId,
                 serviceId: service.id,
-                specialistId: specialist.id,
                 timeSlotId: timeSlot.id,
                 customerName: authState.user?.name || 'Guest',
-                customerPhone: authState.user?.phone || '',
-                customerEmail: authState.user?.email,
+                customerEmail: authState.user?.email || undefined,
                 notes
             });
 
@@ -149,28 +145,25 @@ export default function ConfirmPage() {
             setIsSubmitting(true);
             setError(null);
 
-            // 先验证验证码
-            const verifyResponse = await api.verifyCode(contactInfo.phone, contactInfo.code);
-            
-            // 如果验证成功，保存token和用户信息
-            if (verifyResponse.success && verifyResponse.token) {
-                // 使用login方法来处理认证状态
-                await login(verifyResponse.user.email, '', verifyResponse.token);
-            }
-
-            await api.verifyAndCreateAppointment({
-                code: contactInfo.code,
+            const response = await verifyAndCreateAppointment({
                 phone: contactInfo.phone,
-                serviceId: service.id,
-                specialistId: specialist.id,
+                code: contactInfo.code,
                 shopId: service.shopId,
+                serviceId: service.id,
                 timeSlotId: timeSlot.id,
-                customerName: verifyResponse.user?.name || 'Guest',
-                customerPhone: contactInfo.phone,
+                customerName: 'Guest',
                 notes
             });
 
-            router.push('/profile/appointments');
+            if (response.success) {
+                // 保存手机号到 localStorage，以便在 profile 页面查看
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem('guestPhone', contactInfo.phone);
+                }
+                router.push('/profile/appointments');
+            } else {
+                setError(response.error || 'Failed to create appointment');
+            }
         } catch (err: any) {
             console.error('Error creating appointment:', err);
             setError(err.message || 'Failed to create appointment. Please try again.');
@@ -234,8 +227,7 @@ export default function ConfirmPage() {
 
                     <div className="border-t pt-4 mt-4">
                         <h3 className="font-medium mb-2">{bookingDetails.serviceName}</h3>
-                        <p className="text-sm text-gray-600">1 hour • {bookingDetails.duration}</p>
-                        <p className="text-sm text-gray-600">with {bookingDetails.specialist}</p>
+                        <p className="text-sm text-gray-600">Duration: {bookingDetails.duration}</p>
                     </div>
                 </div>
             </div>

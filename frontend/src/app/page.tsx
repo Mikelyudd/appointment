@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useBooking } from '@/contexts/BookingContext'
-import { api } from '@/lib/api'
+import { getServices } from '@/app/actions/booking'
 import { ServiceCard } from '@/components/booking/services/service-card'
 import { BookingSteps } from '@/components/booking/steps/booking-steps'
 import { Service } from '@/types'
@@ -27,14 +27,21 @@ export default function BookingPage() {
         async function loadServices() {
             try {
                 setError(null);
-                const shopId = process.env.NEXT_PUBLIC_SHOP_ID || '1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed';
+                const shopId = 'aec0c125-1c74-487f-8b6d-4ce0125384a2';
                 console.log('Loading services for shop:', shopId);
-                const data = await api.getServices(shopId);
-                console.log('Loaded services:', data);
-                setServices(data || []);
-            } catch (error) {
+                const response = await getServices(shopId);
+                console.log('Loaded services:', response);
+                if (response.success) {
+                    setServices(response.data as any || []);
+                    if (response.data && response.data.length > 0) {
+                        setSelectedCategory(response.data[0].category);
+                    }
+                } else {
+                    setError(response.error || 'Failed to load services.');
+                }
+            } catch (error: any) {
                 console.error('Failed to load services:', error);
-                setError('Failed to load services. Please try again.');
+                setError(error.message || 'Failed to load services. Please try again.');
             } finally {
                 setLoading(false);
             }
@@ -53,7 +60,7 @@ export default function BookingPage() {
             type: 'SELECT_SERVICE',
             payload: service
         });
-        router.push('/booking/resource');
+        router.push('/booking/time');
     }
 
     if (loading) {
