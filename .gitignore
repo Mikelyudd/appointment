@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# next.js
+.next/
+**/ .next/
+out/
+
+# production
+build/
+dist/
+
+# misc
+.DS_Store
+*.pem
+backend.zip
+
+# IDEs
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS
+Thumbs.db
