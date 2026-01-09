@@ -35,7 +35,7 @@ export default function DashboardPage() {
     ]);
 
     if (statsRes.success) setStats(statsRes.data);
-    if (apptsRes.success) setRecentAppointments(apptsRes.data.slice(0, 5));
+    if (apptsRes.success && apptsRes.data) setRecentAppointments(apptsRes.data.slice(0, 5));
     setLoading(false);
   }
 
