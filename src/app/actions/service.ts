@@ -1,3 +1,8 @@
+'use server'
+
+import prisma from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
+
 export async function getServiceDetail(serviceId: string) {
   try {
     const service = await prisma.service.findUnique({
@@ -58,4 +63,3 @@ export async function createDraftService(shopId: string) {
     return { success: false, error: 'Failed to create service draft' };
   }
 }
-
