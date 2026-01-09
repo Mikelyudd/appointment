@@ -1,37 +1,35 @@
 # dependencies
-node_modules/
-**/node_modules/
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
 
 # next.js
-.next/
-**/ .next/
-out/
+/.next/
+/out/
 
 # production
-build/
-dist/
+/build
 
 # misc
 .DS_Store
 *.pem
-backend.zip
 
-# IDEs
-.idea/
-.vscode/
-
-# Logs
-*.log
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
 # local env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env*.local
 
-# OS
-Thumbs.db
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+/src/generated/prisma
