@@ -16,7 +16,9 @@ export async function getAllShops() {
   try {
     const shops = await prisma.shop.findMany({
       include: {
-        _count: { select: { services: true, appointments: true } }
+        _count: { select: { services: true, appointments: true } },
+        users: { where: { role: 'MERCHANT' } },
+        appointments: { where: { status: 'CONFIRMED' } }
       },
       orderBy: { createdAt: 'desc' }
     });

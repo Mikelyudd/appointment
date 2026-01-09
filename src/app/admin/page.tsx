@@ -1,218 +1,124 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  CalendarDays,
-  Clock,
-  Users,
-  TrendingUp,
-  DollarSign,
+import { 
+  CalendarDays, 
+  Users, 
+  DollarSign, 
   Star,
-  Calendar,
+  Loader2
 } from "lucide-react";
-
-// 假数据生成函数
-const generateDailyData = () => {
-  return Array.from({ length: 7 }, (_, i) => ({
-    date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
-    appointments: Math.floor(Math.random() * 20) + 5,
-    revenue: Math.floor(Math.random() * 2000) + 500,
-  }));
-};
+import { getAdminStats, getAllAppointments } from "@/app/actions/booking";
+import moment from "moment";
+import { Badge } from "@/components/ui/badge";
 
 export default function DashboardPage() {
-  const [timeRange, setTimeRange] = useState<"today" | "week" | "month">("week");
-  const [stats] = useState({
-    today: {
-      appointments: 12,
-      revenue: 1280,
-      newCustomers: 3,
-      completionRate: 95,
-    },
-    week: {
-      appointments: 85,
-      revenue: 8960,
-      newCustomers: 21,
-      completionRate: 92,
-    },
-    month: {
-      appointments: 320,
-      revenue: 35200,
-      newCustomers: 84,
-      completionRate: 94,
-    },
-  });
+  const searchParams = useSearchParams();
+  const shopId = searchParams.get("shopId");
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [recentAppointments, setRecentAppointments] = useState<any[]>([]);
 
-  const [dailyData] = useState(generateDailyData());
-  const [topServices] = useState([
-    { name: "剪发", count: 45, revenue: 3960 },
-    { name: "染发", count: 28, revenue: 8400 },
-    { name: "造型", count: 32, revenue: 4800 },
-  ]);
+  useEffect(() => {
+    if (shopId) {
+      loadDashboardData();
+    }
+  }, [shopId]);
+
+  async function loadDashboardData() {
+    setLoading(true);
+    const [statsRes, apptsRes] = await Promise.all([
+      getAdminStats(shopId!),
+      getAllAppointments(shopId!)
+    ]);
+
+    if (statsRes.success) setStats(statsRes.data);
+    if (apptsRes.success) setRecentAppointments(apptsRes.data.slice(0, 5));
+    setLoading(false);
+  }
+
+  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-yellow-600" /></div>;
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">数据概览</h1>
-        <div className="space-x-2">
-          <Button
-            variant={timeRange === "today" ? "default" : "outline"}
-            onClick={() => setTimeRange("today")}
-          >
-            今日
-          </Button>
-          <Button
-            variant={timeRange === "week" ? "default" : "outline"}
-            onClick={() => setTimeRange("week")}
-          >
-            本周
-          </Button>
-          <Button
-            variant={timeRange === "month" ? "default" : "outline"}
-            onClick={() => setTimeRange("month")}
-          >
-            本月
-          </Button>
-        </div>
-      </div>
+      <h1 className="text-3xl font-bold mb-8">Dashboard Overview</h1>
 
-      {/* 主要统计数据 */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+      {/* Main Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">预约数</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-500">Total Appointments</CardTitle>
+            <CalendarDays className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats[timeRange].appointments}</div>
-            <p className="text-xs text-muted-foreground">
-              较上期 +2.1%
-            </p>
+            <div className="text-3xl font-bold">{stats?.totalAppointments || 0}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">营业额</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-500">Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">¥{stats[timeRange].revenue}</div>
-            <p className="text-xs text-muted-foreground">
-              较上期 +4.3%
-            </p>
+            <div className="text-3xl font-bold text-green-600">${Number(stats?.totalRevenue || 0).toFixed(2)}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">新客户</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-500">Total Services</CardTitle>
+            <Users className="h-4 w-4 text-blue-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats[timeRange].newCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              较上期 +12.5%
-            </p>
+            <div className="text-3xl font-bold">{stats?.totalServices || 0}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">完成率</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-500">Completion Rate</CardTitle>
+            <Star className="h-4 w-4 text-yellow-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats[timeRange].completionRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              较上期 +0.8%
-            </p>
+            <div className="text-3xl font-bold">{stats?.completionRate || 0}%</div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7 mb-6">
-        {/* 每日数据趋势 */}
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>数据趋势</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 pb-2 border-b">
-                <div className="text-sm font-medium">日期</div>
-                <div className="text-sm font-medium">预约数</div>
-                <div className="text-sm font-medium">营业额</div>
-              </div>
-              {dailyData.map((day) => (
-                <div key={day.date} className="grid grid-cols-3 gap-4">
-                  <div className="text-sm">{day.date}</div>
-                  <div className="text-sm">{day.appointments}</div>
-                  <div className="text-sm">¥{day.revenue}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* 热门服务 */}
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>热门服务</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4 pb-2 border-b">
-                <div className="text-sm font-medium">服务项目</div>
-                <div className="text-sm font-medium">预约次数</div>
-                <div className="text-sm font-medium">营业额</div>
-              </div>
-              {topServices.map((service) => (
-                <div key={service.name} className="grid grid-cols-3 gap-4">
-                  <div className="text-sm font-medium">{service.name}</div>
-                  <div className="text-sm">{service.count}</div>
-                  <div className="text-sm">¥{service.revenue}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 今日预约 */}
+      {/* Recent Appointments */}
       <Card>
         <CardHeader>
-          <CardTitle>今日预约</CardTitle>
+          <CardTitle>Recent Appointments</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="grid grid-cols-6 gap-4 pb-2 border-b">
-              <div className="text-sm font-medium">时间</div>
-              <div className="text-sm font-medium">客户</div>
-              <div className="text-sm font-medium">服务项目</div>
-              <div className="text-sm font-medium">服务人员</div>
-              <div className="text-sm font-medium">状态</div>
-              <div className="text-sm font-medium">金额</div>
+            <div className="grid grid-cols-5 gap-4 pb-2 border-b text-sm font-semibold text-gray-500">
+              <div>Customer</div>
+              <div>Service</div>
+              <div>Date & Time</div>
+              <div>Status</div>
+              <div className="text-right">Amount</div>
             </div>
-            <div className="grid grid-cols-6 gap-4">
-              <div className="text-sm">14:00</div>
-              <div className="text-sm">张三</div>
-              <div className="text-sm">剪发</div>
-              <div className="text-sm">李四</div>
-              <div className="text-sm">已确认</div>
-              <div className="text-sm">¥88</div>
-            </div>
-            <div className="grid grid-cols-6 gap-4">
-              <div className="text-sm">15:30</div>
-              <div className="text-sm">王五</div>
-              <div className="text-sm">染发</div>
-              <div className="text-sm">赵六</div>
-              <div className="text-sm">待确认</div>
-              <div className="text-sm">¥299</div>
-            </div>
+            {recentAppointments.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">No appointments yet.</div>
+            ) : recentAppointments.map((appt) => (
+              <div key={appt.id} className="grid grid-cols-5 gap-4 items-center text-sm">
+                <div className="font-medium">{appt.customerName}</div>
+                <div>{appt.optionName || appt.service.name}</div>
+                <div className="text-gray-500">
+                    {moment(appt.date).format('MMM D')} @ {moment(appt.startTime, 'HH:mm').format('h:mm A')}
+                </div>
+                <div>
+                  <Badge variant={appt.status === 'CONFIRMED' ? 'default' : 'secondary'} className={appt.status === 'CONFIRMED' ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}>
+                    {appt.status}
+                  </Badge>
+                </div>
+                <div className="text-right font-bold text-yellow-700">${Number(appt.price || appt.service.price).toFixed(2)}</div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
     </div>
   );
-} 
+}
