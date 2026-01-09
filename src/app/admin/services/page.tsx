@@ -2,29 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Loader2, Plus, Trash2, Edit2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, LayoutGrid } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { getServices, createService, deleteService } from "@/app/actions/booking";
+import { getServices, deleteService } from "@/app/actions/booking";
+import { createDraftService } from "@/app/actions/service";
 
 export default function ServicesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const shopId = searchParams.get("shopId");
-  const [open, setOpen] = useState(false);
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -38,24 +29,17 @@ export default function ServicesPage() {
     setLoading(false);
   }
 
-  const handleCreateService = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleAddNew = async () => {
     if (!shopId) return;
-    setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    const res = await createService({
-      shopId,
-      name: formData.get("name") as string,
-      duration: parseInt(formData.get("duration") as string),
-      price: parseFloat(formData.get("price") as string),
-    });
+    setIsCreating(true);
+    const res = await createDraftService(shopId);
     if (res.success) {
-      toast({ title: "Created!" });
-      setOpen(false);
-      // 直接跳转到详情页进行深度编辑
+      // 瞬间跳转到详情页
       router.push(`/admin/services/${res.data.id}?shopId=${shopId}`);
+    } else {
+      toast({ title: "Error", description: "Could not create service draft", variant: "destructive" });
+      setIsCreating(false);
     }
-    setIsSubmitting(false);
   };
 
   const handleDeleteService = async (id: string) => {
@@ -65,67 +49,76 @@ export default function ServicesPage() {
     }
   };
 
-  if (!shopId) return <div className="p-8 text-center text-muted-foreground">No shop selected.</div>;
+  if (!shopId) return <div className="p-20 text-center text-muted-foreground flex flex-col items-center gap-4">
+    <LayoutGrid className="w-12 h-12 opacity-20" />
+    <p>Please select a shop to manage services.</p>
+  </div>;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-6 max-w-5xl mx-auto pb-20">
+      <div className="flex justify-between items-end mb-10">
         <div>
-          <h1 className="text-3xl font-bold">Service Menu</h1>
-          <p className="text-muted-foreground mt-1">Add and manage your salon's services.</p>
+          <h1 className="text-4xl font-extrabold tracking-tight">Service Menu</h1>
+          <p className="text-muted-foreground mt-2 text-lg">Define your offerings and pricing variations.</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-yellow-600 hover:bg-yellow-700">
-              <Plus className="w-4 h-4 mr-2" /> Add New Service
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Quick Add Service</DialogTitle></DialogHeader>
-            <form onSubmit={handleCreateService} className="space-y-4 pt-4">
-              <div className="space-y-2"><Label>Service Name</Label><Input name="name" required placeholder="e.g. Deep Tissue Massage" /></div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Duration (min)</Label><Input name="duration" type="number" required defaultValue="60" /></div>
-                <div className="space-y-2"><Label>Price ($)</Label><Input name="price" type="number" step="0.01" required placeholder="0.00" /></div>
-              </div>
-              <Button type="submit" disabled={isSubmitting} className="w-full bg-yellow-600">Create & Configure</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          onClick={handleAddNew} 
+          disabled={isCreating}
+          className="bg-yellow-600 hover:bg-yellow-700 h-12 px-6 rounded-xl shadow-lg shadow-yellow-600/20"
+        >
+          {isCreating ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Plus className="w-5 h-5 mr-2" />}
+          Add New Service
+        </Button>
       </div>
 
       <div className="grid gap-4">
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-yellow-600" /></div>
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-yellow-600" />
+            <p className="text-sm font-medium text-gray-400">Loading your menu...</p>
+          </div>
         ) : services.length === 0 ? (
-          <div className="text-center py-20 bg-gray-50 rounded-2xl border-2 border-dashed">
-            <p className="text-muted-foreground">No services yet. Click "Add New Service" to start.</p>
+          <div className="text-center py-24 bg-gray-50 rounded-[2rem] border-2 border-dashed flex flex-col items-center gap-4">
+            <div className="bg-white p-4 rounded-full shadow-sm">
+                <Plus className="w-8 h-8 text-yellow-600" />
+            </div>
+            <div className="space-y-1">
+                <p className="text-xl font-bold">No services yet</p>
+                <p className="text-muted-foreground">Start by adding your first treatment or service.</p>
+            </div>
+            <Button onClick={handleAddNew} variant="outline" className="mt-4 border-yellow-600 text-yellow-700 hover:bg-yellow-50">Create Now</Button>
           </div>
         ) : services.map((s) => (
-          <Card key={s.id} className="p-6 hover:shadow-md transition-shadow group">
+          <Card key={s.id} className="p-6 hover:shadow-xl hover:scale-[1.01] transition-all duration-300 group border-none bg-white shadow-sm ring-1 ring-gray-100">
             <div className="flex justify-between items-center">
-              <div className="space-y-1">
-                <h3 className="text-xl font-bold group-hover:text-yellow-700 transition-colors">{s.name}</h3>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>{s.duration} mins</span>
-                  <span>•</span>
-                  <span className="font-bold text-yellow-700">${Number(s.price).toFixed(2)}</span>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold group-hover:text-yellow-700 transition-colors">{s.name}</h3>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center text-gray-500 bg-gray-50 px-3 py-1 rounded-full text-sm font-medium">
+                    <Loader2 className="w-3 h-3 mr-2 opacity-50" /> {s.duration} mins
+                  </div>
+                  <span className="text-2xl font-black text-yellow-700">${Number(s.price).toFixed(2)}</span>
                   {s.options?.length > 0 && (
-                    <>
-                      <span>•</span>
-                      <span className="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                        {s.options.length} Packages
-                      </span>
-                    </>
+                    <span className="bg-yellow-600 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                      {s.options.length} Variations
+                    </span>
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => router.push(`/admin/services/${s.id}?shopId=${shopId}`)}>
+              <div className="flex gap-3">
+                <Button 
+                    variant="secondary" 
+                    className="rounded-xl h-11 px-5 font-bold"
+                    onClick={() => router.push(`/admin/services/${s.id}?shopId=${shopId}`)}
+                >
                   <Edit2 className="w-4 h-4 mr-2" /> Edit Details
                 </Button>
-                <Button variant="ghost" className="text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeleteService(s.id)}>
-                  <Trash2 className="w-4 h-4" />
+                <Button 
+                    variant="ghost" 
+                    className="text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl h-11 w-11 p-0" 
+                    onClick={() => handleDeleteService(s.id)}
+                >
+                  <Trash2 className="w-5 h-5" />
                 </Button>
               </div>
             </div>

@@ -38,3 +38,24 @@ export async function updateService(serviceId: string, data: {
     return { success: false, error: 'Failed to update service' };
   }
 }
+
+export async function createDraftService(shopId: string) {
+  try {
+    const service = await prisma.service.create({
+      data: {
+        shopId,
+        name: "New Service",
+        duration: 60,
+        price: 0,
+        description: "",
+        category: "General"
+      }
+    });
+    revalidatePath('/admin/services');
+    return { success: true, data: service };
+  } catch (error) {
+    console.error('Error creating draft service:', error);
+    return { success: false, error: 'Failed to create service draft' };
+  }
+}
+
