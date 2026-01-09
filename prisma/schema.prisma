@@ -16,7 +16,12 @@ model User {
   password  String
   name      String
   phone     String?  @unique
-  role      UserRole @default(USER)
+  role      UserRole @default(CUSTOMER)
+  
+  // 关联店铺：如果是 MERCHANT，这里必填
+  shopId    String?  @map("shop_id")
+  shop      Shop?    @relation(fields: [shopId], references: [id])
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -26,12 +31,14 @@ model User {
 }
 
 enum UserRole {
-  USER
-  ADMIN
+  SUPER_ADMIN // Agency 总管理员（你）
+  MERCHANT    // 商家老板
+  CUSTOMER    // 普通顾客
 }
 
 model Shop {
   id           String   @id @default(uuid())
+  slug         String   @unique // 唯一标识符，用于 URL
   name         String
   address      String
   phone        String
@@ -39,10 +46,12 @@ model Shop {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
+  users        User[]   // 一个店可以有多个管理员（老板、前台）
   services     Service[]
   appointments Appointment[]
   timeSlots    TimeSlot[]
 
+  @@index([slug]) // 为 slug 增加索引，提升查询效率
   @@map("shops")
 }
 
@@ -59,8 +68,27 @@ model Service {
 
   shop         Shop          @relation(fields: [shopId], references: [id])
   appointments Appointment[]
+  options      ServiceOption[] // 一个服务可以有多个选项
 
+  @@index([shopId])
   @@map("services")
+}
+
+model ServiceOption {
+  id          String   @id @default(uuid())
+  serviceId   String   @map("service_id")
+  name        String
+  duration    Int      // 单位：分钟
+  price       Decimal  @db.Decimal(10, 2)
+  type        String?  // 如 "Annual Pass", "Package"
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  service      Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  appointments Appointment[] // 关联到预约
+
+  @@index([serviceId])
+  @@map("service_options")
 }
 
 model TimeSlot {
@@ -75,6 +103,7 @@ model TimeSlot {
   shop         Shop          @relation(fields: [shopId], references: [id])
   appointments Appointment[]
 
+  @@index([shopId, date])
   @@map("time_slots")
 }
 
@@ -88,6 +117,9 @@ model Appointment {
   id            String            @id @default(uuid())
   shopId        String            @map("shop_id")
   serviceId     String            @map("service_id")
+  serviceOptionId String?         @map("service_option_id") // 记录选中的选项 ID
+  optionName    String?           @map("option_name")       // 记录选中的选项名称（快照）
+  price         Decimal?          @db.Decimal(10, 2)        // 记录最终成交价格（快照）
   timeSlotId    String            @map("time_slot_id")
   userId        String?           @map("user_id")
   customerName  String            @map("customer_name")
@@ -101,11 +133,14 @@ model Appointment {
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
 
-  user     User?    @relation(fields: [userId], references: [id])
-  shop     Shop     @relation(fields: [shopId], references: [id])
-  service  Service  @relation(fields: [serviceId], references: [id])
-  timeSlot TimeSlot @relation(fields: [timeSlotId], references: [id])
+  user          User?             @relation(fields: [userId], references: [id])
+  shop          Shop              @relation(fields: [shopId], references: [id])
+  service       Service           @relation(fields: [serviceId], references: [id])
+  serviceOption ServiceOption?    @relation(fields: [serviceOptionId], references: [id])
+  timeSlot      TimeSlot          @relation(fields: [timeSlotId], references: [id])
 
+  @@index([shopId])
+  @@index([customerPhone])
   @@map("appointments")
 }
 

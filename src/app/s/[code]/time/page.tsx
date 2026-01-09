@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useBooking } from '@/contexts/BookingContext';
 import { getTimeSlots } from '@/app/actions/booking';
 import { TimeSlot } from '@/types';
@@ -22,6 +22,7 @@ interface GroupedTimeSlots {
 
 export default function TimePage() {
     const router = useRouter();
+    const { slug } = useParams();
     const { state, dispatch } = useBooking();
     const [selectedDate, setSelectedDate] = useState(moment().format('YYYY-MM-DD'));
     const [timeSlots, setTimeSlots] = useState<GroupedTimeSlots>({
@@ -40,7 +41,7 @@ export default function TimePage() {
     useEffect(() => {
         // 如果没有选择服务，重定向到服务选择页面
         if (!state.selectedService) {
-            router.replace('/booking/services');
+            router.replace(`/shop/${slug}/services`);
             return;
         }
 
@@ -73,7 +74,7 @@ export default function TimePage() {
 
         console.log('Selected time slot:', slot);
         dispatch({ type: 'SELECT_TIME_SLOT', payload: slot });
-        router.push('/booking/confirm');
+        router.push(`/shop/${slug}/confirm`);
     };
 
     if (loading) {

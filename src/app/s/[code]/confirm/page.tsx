@@ -6,10 +6,10 @@ export const fetchCache = 'force-no-store';
 export const revalidate = 0;
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { useBooking } from '@/contexts/BookingContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { verifyAndCreateAppointment, sendVerificationCode } from '@/app/actions/booking';
+import { verifyAndCreateAppointment, sendVerificationCode, getShopBySlug } from '@/app/actions/booking';
 import { BookingSteps } from '@/components/booking/steps/booking-steps';
 import { ContactForm } from '@/components/booking/confirm/contact-form';
 import moment from 'moment';
@@ -68,19 +68,31 @@ function LoggedInConfirm({
 
 export default function ConfirmPage() {
     const router = useRouter();
+    const { slug } = useParams();
     const { state: bookingState } = useBooking();
     const { state: authState, login } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [notes, setNotes] = useState('');
+    const [shopInfo, setShopInfo] = useState<any>(null);
 
     // 在组件挂载时检查预约信息
     useEffect(() => {
         if (!bookingState.selectedService ||
             !bookingState.selectedTimeSlot) {
-            router.replace('/booking/services');
+            router.replace(`/shop/${slug}/services`);
         }
-    }, []);
+
+        async function loadShop() {
+            if (slug) {
+                const response = await getShopBySlug(slug as string);
+                if (response.success) {
+                    setShopInfo(response.data);
+                }
+            }
+        }
+        loadShop();
+    }, [slug, bookingState.selectedService, bookingState.selectedTimeSlot]);
 
     // 如果没有必要的信息，显示加载状态
     if (!bookingState.selectedService ||
@@ -91,7 +103,7 @@ export default function ConfirmPage() {
                 <div className="text-center">
                     <p className="text-red-600">Please complete your booking selection first</p>
                     <button
-                        onClick={() => router.push('/booking/services')}
+                        onClick={() => router.push(`/shop/${slug}/services`)}
                         className="mt-4 text-blue-600 hover:text-blue-800"
                     >
                         Start booking
@@ -210,11 +222,10 @@ export default function ConfirmPage() {
                 </div>
 
                 <div className="bg-white p-6 rounded-lg shadow">
-                    <h2 className="font-semibold mb-4">{service.shopName || 'New Bliss Beauty'}</h2>
+                    <h2 className="font-semibold mb-4">{shopInfo?.name || 'Loading...'}</h2>
                     <div className="text-sm text-gray-600 space-y-1 mb-4">
-                        <p>36-29 Main St, 2FL</p>
-                        <p>Flushing, NY 11354, USA</p>
-                        <p>(646)-661-3666</p>
+                        <p>{shopInfo?.address}</p>
+                        <p>{shopInfo?.phone}</p>
                     </div>
 
                     <div className="border-t pt-4">
