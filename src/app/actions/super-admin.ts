@@ -73,3 +73,28 @@ export async function onboardShop(data: { name: string, email: string, address?:
     return { success: false, error: error.message || 'Failed to onboard shop' };
   }
 }
+
+// 4. 获取全平台顾客列表
+export async function getAllCustomers() {
+  try {
+    const customers = await prisma.appointment.groupBy({
+      by: ['customerPhone', 'customerName'],
+      _count: { id: true },
+      _max: { createdAt: true },
+      orderBy: { _max: { createdAt: 'desc' } }
+    });
+
+    return { 
+      success: true, 
+      data: customers.map(c => ({
+        phone: c.customerPhone,
+        name: c.customerName,
+        totalAppointments: c._count.id,
+        lastActive: c._max.createdAt
+      }))
+    };
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    return { success: false, error: 'Failed to fetch customers' };
+  }
+}

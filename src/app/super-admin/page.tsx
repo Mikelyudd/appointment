@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAllShops, onboardShop } from '@/app/actions/super-admin';
+import { getAllShops, onboardShop, getAllCustomers } from '@/app/actions/super-admin';
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,24 +9,29 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Store, Calendar, Users, Link as LinkIcon, ExternalLink, DollarSign } from "lucide-react";
+import { Plus, Store, Calendar, Users, Link as LinkIcon, ExternalLink, DollarSign, UserCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import moment from 'moment';
 
 export default function SuperAdminDashboard() {
   const [shops, setShops] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => { loadShops(); }, []);
+  useEffect(() => { loadInitialData(); }, []);
 
-  async function loadShops() {
+  async function loadInitialData() {
     setLoading(true);
-    const res = await getAllShops();
-    if (res.success) setShops(res.data || []);
+    const [shopsRes, customersRes] = await Promise.all([
+      getAllShops(),
+      getAllCustomers()
+    ]);
+    if (shopsRes.success) setShops(shopsRes.data || []);
+    if (customersRes.success) setCustomers(customersRes.data || []);
     setLoading(false);
   }
 
@@ -45,7 +50,7 @@ export default function SuperAdminDashboard() {
     if (res.success) {
       toast({ title: "Success", description: "Shop created successfully!" });
       setIsDialogOpen(false);
-      loadShops();
+      loadInitialData();
     } else {
       toast({ title: "Error", description: res.error, variant: "destructive" });
     }
@@ -76,9 +81,10 @@ export default function SuperAdminDashboard() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Active Merchants</CardTitle><Store className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{shops.length}</div></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Appointments</CardTitle><Calendar className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{shops.reduce((acc, s) => acc + (s._count?.appointments || 0), 0)}</div></CardContent></Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Merchants</CardTitle><Store className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{shops.length}</div></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Platform Customers</CardTitle><UserCheck className="h-4 w-4 text-blue-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{customers.length}</div></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Appointments</CardTitle><Calendar className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{shops.reduce((acc, s) => acc + (s._count?.appointments || 0), 0)}</div></CardContent></Card>
         <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Platform Revenue</CardTitle><DollarSign className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-green-600">${shops.reduce((acc, s) => acc + (s.appointments?.reduce((sum: number, a: any) => sum + Number(a.price || 0), 0) || 0), 0).toFixed(2)}</div></CardContent></Card>
       </div>
 
@@ -86,6 +92,7 @@ export default function SuperAdminDashboard() {
         <TabsList>
           <TabsTrigger value="shops">Shops & Links</TabsTrigger>
           <TabsTrigger value="accounts">Merchant Accounts</TabsTrigger>
+          <TabsTrigger value="customers">Platform Customers</TabsTrigger>
         </TabsList>
 
         <TabsContent value="shops">
@@ -131,6 +138,27 @@ export default function SuperAdminDashboard() {
                         <TableCell className="text-right"><Button variant="ghost" size="sm" className="text-blue-600">Reset Password</Button></TableCell>
                       </TableRow>
                     ))
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="customers">
+          <Card>
+            <CardHeader><CardTitle>Platform User Database</CardTitle></CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader><TableRow><TableHead>Customer Name</TableHead><TableHead>Phone Number</TableHead><TableHead>Total Bookings</TableHead><TableHead>Last Active</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {customers.length === 0 ? <TableRow><TableCell colSpan={4} className="text-center py-8 text-gray-500">No customers found yet.</TableCell></TableRow> : customers.map((c) => (
+                    <TableRow key={c.phone}>
+                      <TableCell className="font-medium">{c.name || 'Guest'}</TableCell>
+                      <TableCell>{c.phone}</TableCell>
+                      <TableCell><Badge variant="secondary">{c.totalAppointments} Bookings</Badge></TableCell>
+                      <TableCell className="text-gray-500 text-sm">{moment(c.lastActive).fromNow()}</TableCell>
+                    </TableRow>
                   ))}
                 </TableBody>
               </Table>
