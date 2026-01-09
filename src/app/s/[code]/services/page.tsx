@@ -26,7 +26,7 @@ export default function ServicesPage() {
         async function loadData() {
             if (!code) return;
             const shopRes = await getShopByCode(code as string);
-            if (shopRes.success) {
+            if (shopRes.success && shopRes.data) {
                 setShopInfo(shopRes.data);
                 const servRes = await getServices(shopRes.data.id);
                 if (servRes.success) setServices(servRes.data as any);

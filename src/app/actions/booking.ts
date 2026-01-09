@@ -88,7 +88,7 @@ export async function sendVerificationCode(phone: string) {
       data: { phone, code, status: VerificationStatus.PENDING }
     })
     console.log(`[Verification] Code for ${phone}: ${code}`)
-    return { success: true }
+    return { success: true, code }
   } catch (error) {
     console.error('Error sending code:', error)
     return { success: false, error: 'Failed to send verification code' }

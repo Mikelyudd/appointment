@@ -1,3 +1,12 @@
+export interface ServiceOption {
+    id: string;
+    name: string;
+    description?: string;
+    duration: number;
+    price: number;
+    type?: string;
+}
+
 export interface Service {
     id: string;
     name: string;
@@ -8,6 +17,7 @@ export interface Service {
     shopId: string;
     shopName?: string;
     isAvailable?: boolean;
+    options?: ServiceOption[];
 }
 
 export interface Specialist {
@@ -19,7 +29,7 @@ export interface Specialist {
     shopId: string;
 }
 
-export type TimeOfDay = 'morning' | 'afternoon' | 'evening';
+export type TimeOfDay = 'MORNING' | 'AFTERNOON' | 'EVENING';
 
 export interface TimeSlot {
     id: string;
@@ -27,7 +37,6 @@ export interface TimeSlot {
     startTime: string;
     endTime: string;
     isAvailable: boolean;
-    specialistId: string;
     shopId: string;
     timeOfDay: TimeOfDay;
 }
@@ -37,4 +46,6 @@ export interface Shop {
     name: string;
     address: string;
     phone: string;
-} 
+    slug: string;
+    workingHours: any;
+}
